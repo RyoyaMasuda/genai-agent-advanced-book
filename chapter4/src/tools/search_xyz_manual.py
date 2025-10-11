@@ -13,6 +13,7 @@ logger = setup_logger(__file__)
 
 # 入力スキーマを定義するクラス
 class SearchKeywordInput(BaseModel):
+    # Field は Pydantic のフィールド定義関数です。モデルのフィールドに追加のメタデータや検証ルールを付与するために使います。
     keywords: str = Field(description="全文検索用のキーワード")
 
 
@@ -29,7 +30,7 @@ def search_xyz_manual(keywords: str) -> list[SearchOutput]:
     # Elasticsearchのインスタンスを作成して、ローカルのElasticsearchに接続
     es = Elasticsearch("http://localhost:9200")
 
-    # 検索対象のインデックスを指定
+    # 検索対象のインデックスを指定 
     index_name = "documents"
 
     # 検索クエリを作成。'content' フィールドに対してキーワードで全文検索を行う
