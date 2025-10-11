@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -177,6 +177,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckduckgo-search" },
+    { name = "ipykernel" },
     { name = "langchain" },
     { name = "langchain-community" },
     { name = "langchain-core" },
@@ -199,6 +200,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "duckduckgo-search", specifier = ">=3.0.0" },
+    { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.29.5" },
     { name = "langchain", specifier = ">=0.3.0" },
     { name = "langchain-community", specifier = ">=0.2.13" },
