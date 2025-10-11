@@ -38,12 +38,20 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Docker Composeがインストールされているかチェック
-if ! command -v docker-compose &> /dev/null; then
+# Docker Compose V2 (docker compose) または V1 (docker-compose) をチェック
+if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
     print_error "Docker Composeがインストールされていません。"
     print_info "以下のコマンドでDocker Composeをインストールしてください:"
-    print_info "  Ubuntu/Debian: sudo apt install docker-compose"
+    print_info "  Ubuntu/Debian: sudo apt install docker-compose-plugin"
     print_info "  macOS: brew install docker-compose"
     exit 1
+fi
+
+# Docker Compose V2を優先的に使用
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
+    DOCKER_COMPOSE_CMD="docker-compose"
 fi
 
 # 必要なファイルの存在チェック
@@ -61,7 +69,7 @@ print_success "必要なファイルが確認されました。"
 
 # 既存のコンテナを停止・削除
 print_info "既存のPostgreSQLコンテナを停止・削除しています..."
-docker-compose down -v 2>/dev/null || true
+$DOCKER_COMPOSE_CMD down -v 2>/dev/null || true
 
 # 5432ポートを使用している他のPostgreSQLプロセスを確認
 print_info "ポート5432の使用状況を確認しています..."
@@ -82,7 +90,7 @@ fi
 
 # PostgreSQLコンテナを起動
 print_info "PostgreSQLコンテナを起動しています..."
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 # コンテナの起動を待機
 print_info "PostgreSQLの起動を待機しています..."
@@ -105,7 +113,7 @@ done
 if [ $COUNTER -eq $TIMEOUT ]; then
     print_error "PostgreSQLの起動に失敗しました。"
     print_info "以下のコマンドでログを確認してください:"
-    print_info "  docker-compose logs postgres"
+    print_info "  $DOCKER_COMPOSE_CMD logs postgres"
     exit 1
 fi
 
@@ -148,10 +156,10 @@ print_info "employeesテーブルの確認:"
 print_info "  docker exec postgres-genai-ch3 psql -U testuser -d testdb -c \"SELECT * FROM employees;\""
 echo
 print_info "コンテナの停止:"
-print_info "  docker-compose down"
+print_info "  $DOCKER_COMPOSE_CMD down"
 echo
 print_info "コンテナの再起動:"
-print_info "  docker-compose up -d"
+print_info "  $DOCKER_COMPOSE_CMD up -d"
 echo
 
 print_info "=== Jupyter Notebookでの使用方法 ==="
