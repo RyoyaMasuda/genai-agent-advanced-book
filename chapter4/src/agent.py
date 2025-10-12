@@ -140,7 +140,7 @@ class HelpDeskAgent:
             dict: 更新された状態（planを含む）
         """
 
-        logger.info("🚀 Starting plan generation process...")
+        logger.info("🚀 計画生成処理を開始します...")
 
         # システムプロンプトを取得
         # エージェントの役割と計画の作成方法を指示
@@ -157,12 +157,15 @@ class HelpDeskAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        logger.debug(f"Final prompt messages: {messages}")
+        logger.debug(f"最終的なプロンプトメッセージ: {messages}")
 
         # OpenAI APIにリクエストを送信
         # Structured Outputsを使用してPlanクラスの形式で結果を取得
+        # Planの型は以下
+        # class Plan(BaseModel):
+        #   subtasks: list[str] = Field(..., description="問題を解決するためのサブタスクリスト")
         try:
-            logger.info("Sending request to OpenAI...")
+            logger.info("OpenAIにリクエストを送信中...")
             response = self.client.beta.chat.completions.parse(
                 model=self.settings.openai_model,  # 使用するモデル（例: gpt-4o）
                 messages=messages,  # プロンプト
@@ -170,16 +173,16 @@ class HelpDeskAgent:
                 temperature=0,  # 決定的な出力（常に同じ結果）
                 seed=0,  # 再現性のためのシード値
             )
-            logger.info("✅ Successfully received response from OpenAI.")
+            logger.info("✅ OpenAIからのレスポンスを正常に受信しました")
         except Exception as e:
-            logger.error(f"Error during OpenAI request: {e}")
+            logger.error(f"OpenAIリクエスト中にエラーが発生しました: {e}")
             raise
 
         # レスポンスからStructured Outputsを利用してPlanクラスのインスタンスを取得
         # plan.subtasksには生成されたサブタスクのリストが含まれる
         plan = response.choices[0].message.parsed
 
-        logger.info("Plan generation complete!")
+        logger.info("計画生成が完了しました！")
 
         # 生成した計画（サブタスクのリスト）を返し、状態を更新する
         return {"plan": plan.subtasks}
@@ -202,17 +205,17 @@ class HelpDeskAgent:
             dict: 更新された状態（messagesを含む）
         """
 
-        logger.info("🚀 Starting tool selection process...")
+        logger.info("🚀 ツール選択処理を開始します...")
 
         # LangChainのツール定義をOpenAI Function Calling形式に変換
         # これによりOpenAIのモデルがツールの使い方を理解できる
-        logger.debug("Converting tools for OpenAI format...")
+        logger.debug("ツールをOpenAI形式に変換中...")
         openai_tools = [convert_to_openai_tool(tool) for tool in self.tools]
 
         # 初回実行かリトライかでプロンプトを切り替える
         if state["challenge_count"] == 0:
             # === 初回実行の場合 ===
-            logger.debug("Creating user prompt for tool selection...")
+            logger.debug("ツール選択用のユーザープロンプトを作成中...")
             
             # サブタスクに適したツール選択を促すプロンプトを生成
             user_prompt = self.prompts.subtask_tool_selection_user_prompt.format(
@@ -229,7 +232,7 @@ class HelpDeskAgent:
 
         else:
             # === リトライの場合 ===
-            logger.debug("Creating user prompt for tool retry...")
+            logger.debug("リトライ用のユーザープロンプトを作成中...")
 
             # 過去の対話履歴を取得
             # 前回の試行でのツール選択、検索結果、内省結果などが含まれる
@@ -249,7 +252,7 @@ class HelpDeskAgent:
         # OpenAI APIにリクエストを送信
         # Function Callingを使用してツールを選択
         try:
-            logger.info("Sending request to OpenAI...")
+            logger.info("OpenAIにリクエストを送信中...")
             response = self.client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=messages,
@@ -257,14 +260,14 @@ class HelpDeskAgent:
                 temperature=0,  # 決定的な出力
                 seed=0,  # 再現性のためのシード値
             )
-            logger.info("✅ Successfully received response from OpenAI.")
+            logger.info("✅ OpenAIからのレスポンスを正常に受信しました")
         except Exception as e:
-            logger.error(f"Error during OpenAI request: {e}")
+            logger.error(f"OpenAIリクエスト中にエラーが発生しました: {e}")
             raise
 
         # ツール呼び出しが含まれているか確認
         if response.choices[0].message.tool_calls is None:
-            raise ValueError("Tool calls are None")
+            raise ValueError("ツール呼び出しがNullです")
 
         # AIの応答（ツール呼び出し情報）をメッセージ履歴に追加
         # tool_callsには、呼び出すツール名と引数が含まれる
@@ -273,7 +276,7 @@ class HelpDeskAgent:
             "tool_calls": [tool_call.model_dump() for tool_call in response.choices[0].message.tool_calls],
         }
 
-        logger.info("Tool selection complete!")
+        logger.info("ツール選択が完了しました！")
         messages.append(ai_message)
 
         # 更新されたメッセージ履歴を返す
@@ -299,7 +302,7 @@ class HelpDeskAgent:
             dict: 更新された状態（messagesとtool_resultsを含む）
         """
 
-        logger.info("🚀 Starting tool execution process...")
+        logger.info("🚀 ツール実行処理を開始します...")
         messages = state["messages"]
 
         # 最後のメッセージ（AIの応答）からツール呼び出し情報を取得
@@ -308,9 +311,9 @@ class HelpDeskAgent:
 
         # ツール呼び出し情報が存在するか確認
         if tool_calls is None:
-            logger.error("Tool calls are None")
-            logger.error(f"Messages: {messages}")
-            raise ValueError("Tool calls are None")
+            logger.error("ツール呼び出しがNullです")
+            logger.error(f"メッセージ: {messages}")
+            raise ValueError("ツール呼び出しがNullです")
 
         # ツール実行結果を格納するリスト
         tool_results = []
@@ -347,7 +350,7 @@ class HelpDeskAgent:
                     "tool_call_id": tool_call["id"],  # どのツール呼び出しの結果か紐付け
                 }
             )
-        logger.info("Tool execution complete!")
+        logger.info("ツール実行が完了しました！")
         
         # 更新されたメッセージ履歴とツール実行結果を返す
         return {"messages": messages, "tool_results": [tool_results]}
@@ -371,7 +374,7 @@ class HelpDeskAgent:
             dict: 更新された状態（messagesとsubtask_answerを含む）
         """
 
-        logger.info("🚀 Starting subtask answer creation process...")
+        logger.info("🚀 サブタスク回答作成処理を開始します...")
         messages = state["messages"]
 
         # OpenAI APIにリクエストを送信
@@ -382,16 +385,16 @@ class HelpDeskAgent:
         # 4. ツール実行結果（検索結果）
         # これらを全てコンテキストとして回答を生成
         try:
-            logger.info("Sending request to OpenAI...")
+            logger.info("OpenAIにリクエストを送信中...")
             response = self.client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=messages,  # 全ての対話履歴
                 temperature=0,  # 決定的な出力
                 seed=0,  # 再現性のためのシード値
             )
-            logger.info("✅ Successfully received response from OpenAI.")
+            logger.info("✅ OpenAIからのレスポンスを正常に受信しました")
         except Exception as e:
-            logger.error(f"Error during OpenAI request: {e}")
+            logger.error(f"OpenAIリクエスト中にエラーが発生しました: {e}")
             raise
 
         # AIが生成した回答を取得
@@ -401,7 +404,7 @@ class HelpDeskAgent:
         ai_message = {"role": "assistant", "content": subtask_answer}
         messages.append(ai_message)
 
-        logger.info("Subtask answer creation complete!")
+        logger.info("サブタスク回答作成が完了しました！")
 
         # 更新されたメッセージ履歴とサブタスク回答を返す
         return {
@@ -434,7 +437,7 @@ class HelpDeskAgent:
             dict: 更新された状態（reflection_results、is_completed、challenge_countを含む）
         """
 
-        logger.info("🚀 Starting reflection process...")
+        logger.info("🚀 内省処理を開始します...")
         messages = state["messages"]
 
         # 内省を促すプロンプトを取得
@@ -447,7 +450,7 @@ class HelpDeskAgent:
         # OpenAI APIにリクエストを送信
         # Structured Outputsを使用してReflectionResultクラスの形式で結果を取得
         try:
-            logger.info("Sending request to OpenAI...")
+            logger.info("OpenAIにリクエストを送信中...")
             response = self.client.beta.chat.completions.parse(
                 model=self.settings.openai_model,
                 messages=messages,
@@ -455,9 +458,9 @@ class HelpDeskAgent:
                 temperature=0,
                 seed=0,
             )
-            logger.info("✅ Successfully received response from OpenAI.")
+            logger.info("✅ OpenAIからのレスポンスを正常に受信しました")
         except Exception as e:
-            logger.error(f"Error during OpenAI request: {e}")
+            logger.error(f"OpenAIリクエスト中にエラーが発生しました: {e}")
             raise
 
         # 内省結果を取得
@@ -465,7 +468,7 @@ class HelpDeskAgent:
         # reflection_result.reflection: 不足している情報や改善点
         reflection_result = response.choices[0].message.parsed
         if reflection_result is None:
-            raise ValueError("Reflection result is None")
+            raise ValueError("内省結果がNullです")
 
         # 内省結果をメッセージ履歴に追加
         messages.append(
@@ -488,7 +491,7 @@ class HelpDeskAgent:
         if update_state["challenge_count"] >= MAX_CHALLENGE_COUNT and not reflection_result.is_completed:
             update_state["subtask_answer"] = f"{state['subtask']}の回答が見つかりませんでした。"
 
-        logger.info("Reflection complete!")
+        logger.info("内省が完了しました！")
         return update_state
 
     def create_answer(self, state: AgentState) -> dict:
@@ -508,7 +511,7 @@ class HelpDeskAgent:
             dict: 更新された状態（last_answerを含む）
         """
 
-        logger.info("🚀 Starting final answer creation process...")
+        logger.info("🚀 最終回答作成処理を開始します...")
         
         # システムプロンプトを取得
         # 最終回答の生成方法（複数の情報を統合し、わかりやすくまとめる）を指示
@@ -534,19 +537,19 @@ class HelpDeskAgent:
 
         # OpenAI APIにリクエストを送信
         try:
-            logger.info("Sending request to OpenAI...")
+            logger.info("OpenAIにリクエストを送信中...")
             response = self.client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=messages,
                 temperature=0,  # 決定的な出力
                 seed=0,  # 再現性のためのシード値
             )
-            logger.info("✅ Successfully received response from OpenAI.")
+            logger.info("✅ OpenAIからのレスポンスを正常に受信しました")
         except Exception as e:
-            logger.error(f"Error during OpenAI request: {e}")
+            logger.error(f"OpenAIリクエスト中にエラーが発生しました: {e}")
             raise
 
-        logger.info("Final answer creation complete!")
+        logger.info("最終回答作成が完了しました！")
 
         # 最終回答を返し、状態を更新する
         return {"last_answer": response.choices[0].message.content}

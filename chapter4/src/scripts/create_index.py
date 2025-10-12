@@ -24,7 +24,7 @@ def load_pdf_docs(data_dir_path: str) -> list[Document]:
     pdf_path = glob(os.path.join(data_dir_path, "**", "*.pdf"), recursive=True)
     docs = []
     text_splitter = RecursiveCharacterTextSplitter(
-        # Set a really small chunk size, just to show.
+        # チャンクサイズを小さく設定（デモ用）
         chunk_size=300,
         chunk_overlap=20,
         length_function=len,
@@ -103,9 +103,9 @@ def create_keyword_search_index(es: Elasticsearch, index_name: str) -> None:
     if not es.indices.exists(index=index_name):
         result = es.indices.create(index=index_name, body=mapping)
         if result:
-            print(f"Index {index_name} created successfully")
+            print(f"インデックス {index_name} を正常に作成しました")
         else:
-            print(f"Failed to create index {index_name}")
+            print(f"インデックス {index_name} の作成に失敗しました")
 
 
 def create_vector_search_index(qdrant_client: QdrantClient, index_name: str) -> None:
@@ -114,9 +114,9 @@ def create_vector_search_index(qdrant_client: QdrantClient, index_name: str) -> 
         vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
     )
     if result:
-        print(f"Collection {index_name} created successfully")
+        print(f"コレクション {index_name} を正常に作成しました")
     else:
-        print(f"Failed to create collection {index_name}")
+        print(f"コレクション {index_name} の作成に失敗しました")
 
 
 def add_documents_to_es(
@@ -182,27 +182,27 @@ if __name__ == "__main__":
     settings = Settings()
 
     index_name = "documents"
-    print(f"Creating index for keyword search {index_name}")
+    print(f"キーワード検索用のインデックス {index_name} を作成中")
     create_keyword_search_index(es, index_name)
     print("--------------------------------")
 
-    print(f"Creating index for vector search {index_name}")
+    print(f"ベクトル検索用のインデックス {index_name} を作成中")
     create_vector_search_index(qdrant_client, index_name)
     print("--------------------------------")
-    print("Loading documents from manual data")
+    print("マニュアルデータからドキュメントを読み込み中")
     manual_docs = load_pdf_docs(data_dir_path="data")
-    print(f"Loaded {len(manual_docs)} documents")
+    print(f"{len(manual_docs)} 件のドキュメントを読み込みました")
 
     print("--------------------------------")
-    print("Loading documents from qa data")
+    print("QAデータからドキュメントを読み込み中")
     qa_docs = load_csv_docs(data_dir_path="data")
-    print(f"Loaded {len(qa_docs)} documents")
+    print(f"{len(qa_docs)} 件のドキュメントを読み込みました")
 
-    print("Adding documents to keyword search index")
+    print("キーワード検索インデックスにドキュメントを追加中")
     add_documents_to_es(es, index_name, manual_docs)
     print("--------------------------------")
 
-    print("Adding documents to vector search index")
+    print("ベクトル検索インデックスにドキュメントを追加中")
     add_documents_to_qdrant(qdrant_client, index_name, qa_docs, settings)
     print("--------------------------------")
-    print("Done")
+    print("完了")

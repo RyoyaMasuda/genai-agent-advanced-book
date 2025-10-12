@@ -6,16 +6,41 @@ class SearchOutput(BaseModel):
     file_name: str = Field(description="The file name")
     content: str = Field(description="The content of the file")
 
+    # @classmethodは、クラスメソッドを定義するデコレーターです
+    # 通常のメソッド(self)ではなく、クラス自身(cls)を第1引数に取ります
+    # インスタンスを作らずにクラスから直接呼び出すことができます
+    # ファクトリーメソッド（異なるデータ形式からインスタンスを作成する）によく使われます
     @classmethod
     def from_hit(cls, hit: dict) -> "SearchOutput":
+        """
+        Elasticsearchの検索結果(hit)からSearchOutputインスタンスを作成するファクトリーメソッド
+        
+        Args:
+            hit (dict): Elasticsearchの検索結果（_sourceフィールドにfile_nameとcontentを含む）
+            
+        Returns:
+            SearchOutput: 作成されたSearchOutputインスタンス
+        """
         return cls(
             file_name=hit["_source"]["file_name"], content=hit["_source"]["content"]
         )
 
     @classmethod
     def from_point(cls, point: ScoredPoint) -> "SearchOutput":
+        """
+        Qdrantの検索結果(point)からSearchOutputインスタンスを作成するファクトリーメソッド
+        
+        Args:
+            point (ScoredPoint): Qdrantの検索結果（payloadにfile_nameとcontentを含む）
+            
+        Returns:
+            SearchOutput: 作成されたSearchOutputインスタンス
+            
+        Raises:
+            ValueError: point.payloadがNoneの場合
+        """
         if point.payload is None:
-            raise ValueError("Payload is None")
+            raise ValueError("ペイロードがNullです")
         return cls(
             file_name=point.payload["file_name"], content=point.payload["content"]
         )

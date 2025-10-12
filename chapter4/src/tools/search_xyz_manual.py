@@ -25,7 +25,7 @@ def search_xyz_manual(keywords: str) -> list[SearchOutput]:
     エラーコードや固有名詞が質問に含まれる場合は、この関数を使ってキーワード検索を行う。
     """
 
-    logger.info(f"Searching XYZ manual by keyword: {keywords}")
+    logger.info(f"キーワードでXYZマニュアルを検索中: {keywords}")
 
     # Elasticsearchのインスタンスを作成して、ローカルのElasticsearchに接続
     es = Elasticsearch("http://localhost:9200")
@@ -39,7 +39,7 @@ def search_xyz_manual(keywords: str) -> list[SearchOutput]:
     # Elasticsearchに検索クエリを送信し、結果を 'response' に格納
     response = es.search(index=index_name, body=keyword_query)
 
-    logger.info(f"Search results: {len(response['hits']['hits'])} hits")
+    logger.info(f"検索結果: {len(response['hits']['hits'])} 件のヒット")
 
     # 検索結果を格納するリスト
     outputs = []
@@ -49,7 +49,7 @@ def search_xyz_manual(keywords: str) -> list[SearchOutput]:
         # カスタムモデルSearchOutputのfrom_hitメソッドを使って、検索結果をオブジェクト化しリストに追加
         outputs.append(SearchOutput.from_hit(hit))
 
-    logger.info("Finished searching XYZ manual by keyword")
+    logger.info("キーワードによるXYZマニュアル検索が完了しました")
 
     # 検索結果のリストを返す
     return outputs
