@@ -121,8 +121,19 @@ class HelpDeskAgent:
         self.tool_map = {tool.name: tool for tool in tools}
         # プロンプトテンプレートを保存
         self.prompts = prompts
+        
         # OpenAI APIクライアントを初期化
-        self.client = OpenAI(api_key=self.settings.openai_api_key)
+        # Azure OpenAIの設定がある場合はAzure OpenAIを使用、なければ通常のOpenAIを使用
+        if self.settings.azure_openai_api_key:
+            # Azure OpenAI用の初期化
+            self.client = OpenAI(
+                api_key=self.settings.azure_openai_api_key,
+                base_url=f"{self.settings.azure_openai_endpoint}/openai/deployments/{self.settings.azure_openai_deployment_name}",
+                default_query={"api-version": self.settings.azure_openai_api_version},
+            )
+        else:
+            # 通常のOpenAI用の初期化
+            self.client = OpenAI(api_key=self.settings.openai_api_key)
 
     def create_plan(self, state: AgentState) -> dict:
         """
@@ -237,11 +248,20 @@ class HelpDeskAgent:
             # 過去の対話履歴を取得
             # 前回の試行でのツール選択、検索結果、内省結果などが含まれる
             messages: list = state["messages"]
-
+                        
+                        
             # NOTE: トークン数節約のため、過去の検索結果（長文）は除外
             # roleが"tool"のメッセージ（検索結果）と
             # "tool_calls"を含むメッセージ（ツール呼び出し）を除外
-            messages = [message for message in messages if message["role"] != "tool" or "tool_calls" not in message]
+            # → なぜこんなことをやっているのか. 以下のファイルにて解説
+            # markdown(解説)/05_リトライ時のメッセージフィルタリングとトークン削減.md 
+            filtered_messages = []
+            for message in messages:
+                if message["role"] == "tool" and "tool_calls" in message:
+                    # tool_calls を持つツールメッセージなのでスキップ
+                    continue
+                filtered_messages.append(message)
+            messages = filtered_messages
 
             # リトライを促すプロンプトを追加
             # 「前回の結果が不十分だったので、別のツールやキーワードで再試行してください」
@@ -519,7 +539,11 @@ class HelpDeskAgent:
 
         # サブタスク結果からタスク内容と回答のみを抽出
         # (ツール実行結果や内省結果などの詳細は除外してトークン数を節約)
-        subtask_results = [(result.task_name, result.subtask_answer) for result in state["subtask_results"]]
+        subtask_results = []
+        for result in state["subtask_results"]:
+            # 各サブタスクから「タスク名」と「回答」を抽出してタプルにする
+            task_info = (result.task_name, result.subtask_answer)
+            subtask_results.append(task_info)
         
         # ユーザープロンプトを生成
         # 元の質問、計画、各サブタスクの結果を含める

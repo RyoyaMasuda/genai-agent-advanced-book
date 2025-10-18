@@ -148,7 +148,19 @@ def add_documents_to_qdrant(
     settings: Settings,
 ) -> None:
     points = []
-    client = OpenAI(api_key=settings.openai_api_key)
+    
+    # OpenAI APIクライアントを初期化（Embedding生成に使用）
+    # Azure OpenAIの設定がある場合はAzure OpenAIを使用、なければ通常のOpenAIを使用
+    if settings.azure_openai_api_key:
+        # Azure OpenAI用の初期化（Embedding用デプロイメントを使用）
+        client = OpenAI(
+            api_key=settings.azure_openai_api_key,
+            base_url=f"{settings.azure_openai_endpoint}/openai/deployments/{settings.azure_openai_embedding_deployment_name}",
+            default_query={"api-version": settings.azure_openai_api_version},
+        )
+    else:
+        # 通常のOpenAI用の初期化
+        client = OpenAI(api_key=settings.openai_api_key)
 
     for i, doc in enumerate(docs):
         content = doc.page_content

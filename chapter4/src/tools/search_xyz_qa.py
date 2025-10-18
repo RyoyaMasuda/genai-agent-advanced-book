@@ -47,8 +47,19 @@ def search_xyz_qa(query: str) -> list[SearchOutput]:
 
     # 設定ファイルから各種設定値（API キーなど）を読み込む
     settings = Settings()
+    
     # OpenAI APIクライアントを初期化（Embedding生成に使用）
-    openai_client = OpenAI(api_key=settings.openai_api_key)
+    # Azure OpenAIの設定がある場合はAzure OpenAIを使用、なければ通常のOpenAIを使用
+    if settings.azure_openai_api_key:
+        # Azure OpenAI用の初期化（Embedding用デプロイメントを使用）
+        openai_client = OpenAI(
+            api_key=settings.azure_openai_api_key,
+            base_url=f"{settings.azure_openai_endpoint}/openai/deployments/{settings.azure_openai_embedding_deployment_name}",
+            default_query={"api-version": settings.azure_openai_api_version},
+        )
+    else:
+        # 通常のOpenAI用の初期化
+        openai_client = OpenAI(api_key=settings.openai_api_key)
 
     # クエリテキストをベクトル化する処理の開始をログに記録
     logger.info("Generating embedding vector from input query")
