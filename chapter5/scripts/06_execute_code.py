@@ -11,12 +11,15 @@ E2B Sandboxを使用してPythonコードを実行し、
 4. 実行結果をJSON形式で出力
 """
 
+import io
+import os
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from e2b_code_interpreter import Sandbox
 
+from rich import print
 
 # src 下のファイルを読み込むために、sys.path にパスを追加
 # これにより、srcディレクトリ内のモジュールをインポートできる
@@ -43,13 +46,13 @@ def main() -> None:
         # CSVファイルをデータフレームとしてSandboxに読み込み
         # set_dataframe関数を使用して、dfという変数名でデータフレームを作成
         with open("data/sample.csv", "rb") as fi:
-            set_dataframe(sandbox=sandbox, file_object=fi)
+            set_dataframe(sandbox=sandbox, file_object=io.BytesIO(fi.read()))
         
         # データフレームの形状（行数・列数）を確認するコードを実行
         data_thread = execute_code(
+            sandbox=sandbox,  # E2B Sandboxインスタンス
             process_id="06_execute_code",  # プロセスID（実行識別子）
             thread_id=0,  # スレッドID（試行回数）
-            sandbox=sandbox,  # E2B Sandboxインスタンス
             code="print(df.shape)",  # 実行するPythonコード
         )
         

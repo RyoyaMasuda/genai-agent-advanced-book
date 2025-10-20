@@ -21,7 +21,8 @@ def execute_code(
         for r in execution.results
     ]
     return DataThread(
-        id=execution.execution_count,
+        # ↓idはない??
+        # id=execution.execution_count,
         process_id=process_id,
         thread_id=thread_id,
         user_request=user_request,
