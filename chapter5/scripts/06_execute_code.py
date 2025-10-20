@@ -12,7 +12,6 @@ E2B Sandboxを使用してPythonコードを実行し、
 """
 
 import io
-import os
 import sys
 from pathlib import Path
 
