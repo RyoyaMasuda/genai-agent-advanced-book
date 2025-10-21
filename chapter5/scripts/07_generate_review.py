@@ -59,7 +59,7 @@ def main() -> None:
     with Sandbox() as sandbox:
         # CSVファイルをデータフレームとしてSandboxに読み込み
         with open(data_path, "rb") as fi:
-            set_dataframe(sandbox=sandbox, file_object=fi)
+            set_dataframe(sandbox=sandbox, file_object=io.BytesIO(fi.read()))
         
         # データフレームの形状を確認するコードを実行
         data_thread = execute_code(
@@ -83,7 +83,11 @@ def main() -> None:
     
     # レビュー結果を取得し、JSON形式で出力
     review = response.content
-    logger.info(review.model_dump_json(indent=4))
+    if isinstance(review, dict):
+        import json
+        logger.info(json.dumps(review, indent=4, ensure_ascii=False))
+    else:
+        logger.info(str(review))
 
 
 if __name__ == "__main__":
