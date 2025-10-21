@@ -10,7 +10,8 @@ import os
 from src.llms.apis import openai
 from src.llms.models import LLMResponse
 from src.llms.utils import load_template
-from src.models import DataThread, Program
+from src.models.data_thread import DataThread
+from src.models.program import Program
 from dotenv import load_dotenv
 
 load_dotenv("/home/ryoyamasuda/Documents/genai-agent-advanced-book/chapter5/.env")

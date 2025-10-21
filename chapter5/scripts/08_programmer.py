@@ -16,7 +16,6 @@ from pathlib import Path
 
 from loguru import logger
 
-
 # src 下のファイルを読み込むために、sys.path にパスを追加
 # これにより、srcディレクトリ内のモジュールをインポートできる
 root_dir = Path(__file__).resolve().parents[1]

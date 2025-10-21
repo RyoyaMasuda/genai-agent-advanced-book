@@ -13,9 +13,10 @@
 """
 
 import io
-
+import os
 from e2b_code_interpreter import Sandbox
 from loguru import logger
+from rich import print
 
 from src.models import DataThread
 from src.modules import (
@@ -26,12 +27,16 @@ from src.modules import (
     set_dataframe,
 )
 
+from dotenv import load_dotenv
+load_dotenv()
+
+model = os.getenv("AZURE_OPENAI_GPT4O-MINI_DEPLOYMENT_NAME", "gpt-4o-mini-2024-07-18")
 
 def programmer_node(
     data_file: str,
     user_request: str,
     process_id: str,
-    model: str = "gpt-4o-mini-2024-07-18",
+    model: str = model,
     n_trial: int = 3,
     idx: int = 0,
 ) -> tuple[int, list[DataThread]]:
@@ -65,7 +70,7 @@ def programmer_node(
     with Sandbox() as sandbox:
         # CSVファイルをデータフレームとしてSandboxに読み込み
         with open(data_file, "rb") as fi:
-            set_dataframe(sandbox=sandbox, file_object=fi)
+            set_dataframe(sandbox=sandbox, file_object=io.BytesIO(fi.read()))
         
         # 最大n_trial回まで試行を繰り返す
         for thread_id in range(n_trial):
@@ -80,15 +85,27 @@ def programmer_node(
             )
             program = response.content
             
-            # 生成されたコードの詳細をログに出力
-            logger.info(program.model_dump_json())
+            # programを辞書に変換
+            if isinstance(program, str):
+                # 文字列の場合はJSONとしてパース
+                import json
+                try:
+                    program_dict = json.loads(program)
+                except json.JSONDecodeError:
+                    # JSONでない場合は空の辞書を作成
+                    program_dict = {"code": program}
+            else:
+                # その他の場合はそのまま使用
+                program_dict = program
             
             # 5.4.2. コード実行フェーズ
+            # 辞書からコードを取得
+            code = program_dict["code"]
             data_thread = execute_code(
                 sandbox,
                 process_id=process_id,
                 thread_id=thread_id,
-                code=program.code,  # 生成されたコードを実行
+                code=code,  # 生成されたコードを実行
                 user_request=user_request,
             )
             
@@ -106,13 +123,29 @@ def programmer_node(
                 model=model,
             )
             review = response.content
+            # reviewを辞書に変換
+            if isinstance(review, str):
+                # 文字列の場合はJSONとしてパース
+                import json
+                try:
+                    review_dict = json.loads(review)
+                except json.JSONDecodeError:
+                    # JSONでない場合は空の辞書を作成
+                    review_dict = {"observation": review}
+            else:
+                # その他の場合はそのまま使用
+                review_dict = review
             
             # レビュー結果の詳細をログに出力
-            logger.info(review.model_dump_json())
+            if isinstance(review, dict):
+                import json
+                logger.info(json.dumps(review, indent=4, ensure_ascii=False))
+            else:
+                logger.info(str(review))
             
             # データスレッドにレビュー結果を追加
-            data_thread.observation = review.observation  # レビューの観察結果
-            data_thread.is_completed = review.is_completed  # 完了フラグ
+            data_thread.observation = review_dict["observation"]  # レビューの観察結果
+            data_thread.is_completed = review_dict["is_completed"]  # 完了フラグ
             
             # 実行結果をリストに追加
             data_threads.append(data_thread)
@@ -121,8 +154,8 @@ def programmer_node(
             if data_thread.is_completed:
                 # タスクが完了した場合、成功ログを出力してループを終了
                 logger.success(f"{user_request=}")
-                logger.success(f"{program.code=}")
-                logger.success(f"{review.observation=}")
+                logger.success(f"{code=}")
+                logger.success(f"{review_dict["observation"]=}")
                 break
     
     # タスクインデックスと実行結果のリストを返す
